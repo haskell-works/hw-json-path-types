@@ -22,7 +22,9 @@ cabal-version:          >= 1.22
 
 library
   hs-source-dirs:       src
-  exposed-modules:      HaskellWorks.Data.Json.Path.Types
+  exposed-modules:      HaskellWorks.Data.Json.Path.Ast
+                      , HaskellWorks.Data.Json.Path.Parser
+                      , HaskellWorks.Data.Json.Path.Types
 
   build-depends:        base                          >= 4          && < 5
                       , array
@@ -32,9 +34,11 @@ library
                       , conduit
                       , containers
                       , dlist
+                      , extra
                       , mmap
                       , mono-traversable
                       , resourcet
+                      , scientific
                       , text
                       , vector
                       , word8
