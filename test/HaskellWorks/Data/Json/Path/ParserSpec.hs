@@ -15,13 +15,12 @@ module HaskellWorks.Data.Json.Path.ParserSpec (spec) where
 import           Test.Hspec
 
 {-# ANN module ("HLint: ignore Redundant do"        :: String) #-}
-{-# ANN module ("HLint: ignore Reduce duplication"  :: String) #-}
-{-# ANN module ("HLint: redundant bracket"          :: String) #-}
 
 spec :: Spec
 spec = describe "HaskellWorks.Data.Json.Path.ParserSpec" $ do
   it "Blah" $ do
     1 `shouldBe` (1 :: Int)
+
 
 -- $.store.book[*].author	The authors of all books
 -- $..author	All authors
