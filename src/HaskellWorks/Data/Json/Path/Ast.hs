@@ -5,6 +5,7 @@ import Data.Int
 data AstToken
   = AstTokenOfPathToken   PathToken
   | AstTokenOfFilterValue FilterValue
+  deriving (Eq, Show)
 
 data FieldAccessor
   = RecursiveAnyField
@@ -13,39 +14,46 @@ data FieldAccessor
   | RecursiveField  String
   | Field           String
   | RootNode
+  deriving (Eq, Show)
 
 data ArrayAccessor
   = ArrayAccessorOfArrayRandomAccess  ArrayRandomAccess
   | ArrayAccessorOfArraySlice         ArraySlice
+  deriving (Eq, Show)
 
 data ArrayRandomAccess = ArrayRandomAccess [Int]
+  deriving (Eq, Show)
 
 data ArraySlice = ArraySlice
   { start :: Maybe Int
   , stop  :: Maybe Int
   , step  :: Int
   }
+  deriving (Eq, Show)
 
-data Any = Null
+data Any = Null deriving (Eq, Show)
 
 data FilterValue
   = FilterValueOfFilterDirectValue  FilterDirectValue
   | FilterValueOfSubQuery           SubQuery
   | FilterValueOfJPString           JPString
+  deriving (Eq, Show)
 
-data JPString = JPString String
+data JPString = JPString String deriving (Eq, Show)
 
-data SubQuery = SubQuery [PathToken]
+data SubQuery = SubQuery [PathToken] deriving (Eq, Show)
 
 data FilterDirectValue
   = JPNull
   | FilterDirectValueOfJPNumber JPNumber
   | JPFalse
   | JPTrue
+  deriving (Eq, Show)
 
 data JPNumber
   = JPLong    Int64
   | JPDouble  Double
+  deriving (Eq, Show)
 
 data ComparisonOperator
   = EqOperator
@@ -54,10 +62,12 @@ data ComparisonOperator
   | GreaterOperator
   | LessOrEqOperator
   | GreaterOrEqOperator
+  deriving (Eq, Show)
 
 data BinaryBooleanOperator
   = AndOperator
   | OrOperator
+  deriving (Eq, Show)
 
 data FilterToken
   = BooleanFilter
@@ -71,8 +81,10 @@ data FilterToken
     , comparisonRhs     :: FilterValue
     }
   | HasFilter SubQuery
+  deriving (Eq, Show)
 
 data RecursiveFilterToken = RecursiveFilterToken FilterToken
+  deriving (Eq, Show)
 
 data PathToken
   = PathTokenOfFilterToken          FilterToken
@@ -80,3 +92,4 @@ data PathToken
   | PathTokenOfArrayAccessor        ArrayAccessor
   | PathTokenOfFieldAccessor        FieldAccessor
   | PathTokenOfRecursiveFilterToken RecursiveFilterToken
+  deriving (Eq, Show)
