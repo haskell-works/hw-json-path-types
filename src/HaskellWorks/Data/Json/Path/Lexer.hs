@@ -380,10 +380,10 @@ makeTokenParser languageDef
     -----------------------------------------------------------
     -- Bracketing
     -----------------------------------------------------------
-    parens p        = between (symbol "(") (symbol ")") p
-    braces p        = between (symbol "{") (symbol "}") p
-    angles p        = between (symbol "<") (symbol ">") p
-    brackets p      = between (symbol "[") (symbol "]") p
+    parens          = between (symbol "(") (symbol ")")
+    braces          = between (symbol "{") (symbol "}")
+    angles          = between (symbol "<") (symbol ">")
+    brackets        = between (symbol "[") (symbol "]")
 
     semi            = symbol ";"
     comma           = symbol ","
@@ -467,7 +467,7 @@ makeTokenParser languageDef
 
 
     -- escape code tables
-    escMap          = zip ("abfnrtv\\\"\'") ("\a\b\f\n\r\t\v\\\"\'")
+    escMap          = zip "abfnrtv\\\"\'" "\a\b\f\n\r\t\v\\\"\'"
     asciiMap        = zip (ascii3codes ++ ascii2codes) (ascii3 ++ ascii2)
 
     ascii2codes     = ["BS","HT","LF","VT","FF","CR","SO","SI","EM",
@@ -486,7 +486,7 @@ makeTokenParser languageDef
     -----------------------------------------------------------
     -- Numbers
     -----------------------------------------------------------
-    naturalOrFloat  = lexeme (natFloat) <?> "number"
+    naturalOrFloat  = lexeme natFloat   <?> "number"
 
     float           = lexeme floating   <?> "float"
     integer         = lexeme int        <?> "integer"
@@ -587,20 +587,19 @@ makeTokenParser languageDef
     operator =
         lexeme $ try $
         do{ name <- oper
-          ; if (isReservedOp name)
+          ; if isReservedOp name
              then unexpected ("reserved operator " ++ show name)
              else return name
           }
 
     oper =
-        do{ c <- (opStart languageDef)
+        do{ c <- opStart languageDef
           ; cs <- many (opLetter languageDef)
           ; return (c:cs)
           }
         <?> "operator"
 
-    isReservedOp name =
-        isReserved (sort (reservedOpNames languageDef)) name
+    isReservedOp = isReserved (sort (reservedOpNames languageDef))
 
 
     -----------------------------------------------------------
@@ -628,7 +627,7 @@ makeTokenParser languageDef
     identifier =
         lexeme $ try $
         do{ name <- ident
-          ; if (isReservedName name)
+          ; if isReservedName name
              then unexpected ("reserved word " ++ show name)
              else return name
           }
@@ -652,7 +651,7 @@ makeTokenParser languageDef
         = scan names
         where
           scan []       = False
-          scan (r:rs)   = case (compare r name) of
+          scan (r:rs)   = case compare r name of
                             LT  -> scan rs
                             EQ  -> True
                             GT  -> False
