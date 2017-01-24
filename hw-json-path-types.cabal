@@ -38,6 +38,7 @@ library
                       , extra
                       , mmap
                       , mono-traversable
+                      , mtl
                       , parsec
                       , resourcet
                       , scientific

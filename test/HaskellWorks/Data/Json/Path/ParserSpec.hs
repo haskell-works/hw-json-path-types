@@ -137,6 +137,7 @@ spec = describe "HaskellWorks.Data.Json.Path.ParserSpec" $ do
               ]
             )
           }
+        )
       ]
   it "$..book[?(@.author=~/.*REES/i)]: All books matching regex (ignore case)" $ do
     parseOnly query "$..book[?(@.author=~/.*REES/i)]" `shouldBe`
