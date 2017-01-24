@@ -23,6 +23,7 @@ cabal-version:          >= 1.22
 library
   hs-source-dirs:       src
   exposed-modules:      HaskellWorks.Data.Json.Path.Ast
+                      , HaskellWorks.Data.Json.Path.Lexer
                       , HaskellWorks.Data.Json.Path.Parser
                       , HaskellWorks.Data.Json.Path.Types
 
@@ -37,6 +38,7 @@ library
                       , extra
                       , mmap
                       , mono-traversable
+                      , parsec
                       , resourcet
                       , scientific
                       , text
