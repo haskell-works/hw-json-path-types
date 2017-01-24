@@ -98,21 +98,48 @@ spec = describe "HaskellWorks.Data.Json.Path.ParserSpec" $ do
       , PathTokenOfFieldAccessor (RecursiveField "book")
       , PathTokenOfFilterToken (HasFilter (SubQuery [CurrentNode, PathTokenOfFieldAccessor (Field "isbn")]))
       ]
-  it "$.store.book[?(@.price < 10)]: All books in store cheaper than 10" $ do
-    parseOnly query "$.store.book[?(@.price < 10)]" `shouldBe`
+  it "$.store.book[?(@.price<10)]: All books in store cheaper than 10" $ do
+    parseOnly query "$.store.book[?(@.price<10)]" `shouldBe`
       Right
       [ PathTokenOfFieldAccessor RootNode
       , PathTokenOfFieldAccessor (Field "store")
       , PathTokenOfFieldAccessor (Field "book")
+      , PathTokenOfFilterToken
+          ComparisonFilter
+          { operator = LessOperator
+          , comparisonLhs = FilterValueOfSubQuery
+            ( SubQuery
+              [ CurrentNode
+              , PathTokenOfFieldAccessor (Field "price")
+              ]
+            )
+          , comparisonRhs = FilterValueOfFilterDirectValue (FilterDirectValueOfJPNumber (JPLong 10))
+          }
       ]
-  it "$..book[?(@.price <= $['expensive'])]: All books in store that are not \"expensive\"" $ do
-    parseOnly query "$..book[?(@.price <= $['expensive'])]" `shouldBe`
+  it "$..book[?(@.price<=$['expensive'])]: All books in store that are not \"expensive\"" $ do
+    parseOnly query "$..book[?(@.price<=$['expensive'])]" `shouldBe`
       Right
       [ PathTokenOfFieldAccessor RootNode
       , PathTokenOfFieldAccessor (RecursiveField "book")
+      , PathTokenOfFilterToken
+          ComparisonFilter
+          { operator = LessOrEqOperator
+          , comparisonLhs = FilterValueOfSubQuery
+            ( SubQuery
+              [ CurrentNode
+              , PathTokenOfFieldAccessor (Field "price")
+              ]
+            )
+          , comparisonRhs = FilterValueOfSubQuery
+            ( SubQuery
+              [ PathTokenOfFieldAccessor RootNode
+              , PathTokenOfFieldAccessor (Field "expensive")
+              ]
+            )
+          }
       ]
-  it "$..book[?(@.author =~ /.*REES/i)]: All books matching regex (ignore case)" $ do
-    parseOnly query "$..book[?(@.author =~ /.*REES/i)]" `shouldBe`
+  it "$..book[?(@.author=~/.*REES/i)]: All books matching regex (ignore case)" $ do
+    parseOnly query "$..book[?(@.author=~/.*REES/i)]" `shouldBe`
       Right
       [ PathTokenOfFieldAccessor RootNode
       , PathTokenOfFieldAccessor (RecursiveField "book")
@@ -130,12 +157,3 @@ spec = describe "HaskellWorks.Data.Json.Path.ParserSpec" $ do
       , PathTokenOfFieldAccessor (RecursiveField "book")
       , PathTokenOfFieldAccessor (Field "length")
       ]
-
-  it "[?(@.author =~ /.*REES/i)]" $ do
-    parseOnly subscriptFilter "[?(@.author =~ /.*REES/i)]" `shouldBe`
-      Right
-      (HasFilter (SubQuery [CurrentNode, PathTokenOfFieldAccessor (Field "author")]))
-  it "?(@.author =~ /.*REES/i)" $ do
-    parseOnly booleanExpression "?(@.author =~ /.*REES/i)" `shouldBe`
-      Right
-      (HasFilter (SubQuery [CurrentNode, PathTokenOfFieldAccessor (Field "author")]))
