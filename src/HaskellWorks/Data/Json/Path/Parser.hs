@@ -115,6 +115,9 @@ comparisonOperator
   <|> (">="  *> return GreaterOrEqOperator)
   <|> (">"   *> return GreaterOperator)
 
+matchOperator :: Parser MatchOperator
+matchOperator = "=~" *> return MatchOperator
+
 current :: Parser PathToken
 current = "@" *> return CurrentNode
 
@@ -127,12 +130,12 @@ expression1 = tokenOf <$> subQuery <*> optional ((,) <$> comparisonOperator <*> 
         tokenOf subq1 Nothing           = HasFilter subq1
         tokenOf lhs   (Just (op, rhs))  = ComparisonFilter op (FilterValueOfSubQuery lhs) rhs
 
-expression2 :: Parser FilterToken
-expression2 = tokenOf <$> value <*> comparisonOperator <*> (FilterValueOfSubQuery <$> subQuery)
+expression3 :: Parser FilterToken
+expression3 = tokenOf <$> value <*> comparisonOperator <*> (FilterValueOfSubQuery <$> subQuery)
   where tokenOf lhs op = ComparisonFilter op lhs
 
 expression :: Parser FilterToken
-expression = expression1 <|> expression2
+expression = expression1 <|> expression3 <|> fail "expression"
 
 pBooleanOperator :: Parser BinaryBooleanOperator
 pBooleanOperator = ("&&" *> return AndOperator) <|> ("||" *> return OrOperator)

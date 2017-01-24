@@ -69,6 +69,8 @@ data BinaryBooleanOperator
   | OrOperator
   deriving (Eq, Show)
 
+data MatchOperator = MatchOperator deriving (Eq, Show)
+
 data FilterToken
   = BooleanFilter
     { booleanOperator   :: BinaryBooleanOperator

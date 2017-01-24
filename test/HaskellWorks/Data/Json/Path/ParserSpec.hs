@@ -130,3 +130,12 @@ spec = describe "HaskellWorks.Data.Json.Path.ParserSpec" $ do
       , PathTokenOfFieldAccessor (RecursiveField "book")
       , PathTokenOfFieldAccessor (Field "length")
       ]
+
+  it "[?(@.author =~ /.*REES/i)]" $ do
+    parseOnly subscriptFilter "[?(@.author =~ /.*REES/i)]" `shouldBe`
+      Right
+      (HasFilter (SubQuery [CurrentNode, PathTokenOfFieldAccessor (Field "author")]))
+  it "?(@.author =~ /.*REES/i)" $ do
+    parseOnly booleanExpression "?(@.author =~ /.*REES/i)" `shouldBe`
+      Right
+      (HasFilter (SubQuery [CurrentNode, PathTokenOfFieldAccessor (Field "author")]))
