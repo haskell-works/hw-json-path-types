@@ -2,25 +2,36 @@ module HaskellWorks.Data.Json.Path.Lexer where
 
 import            Data.Functor.Identity
 import            Text.Parsec
-import qualified  Text.Parsec.Token as P
-import            Text.Parsec.Language (haskellDef)
+import qualified  Text.Parsec.Token     as T
+import            Text.Parsec.Language  as L
+
+jsonPathStyle  :: L.LanguageDef st
+jsonPathStyle   = emptyDef
+  { T.commentStart   = "{-"
+  , T.commentEnd     = "-}"
+  , T.commentLine    = "--"
+  , T.nestedComments = True
+  , T.identStart     = letter
+  , T.identLetter    = alphaNum <|> oneOf "_'"
+  , T.reservedNames  = []
+  , T.reservedOpNames= []
+  , T.caseSensitive  = False
+  }
 
 expr :: ParsecT String u Identity String
-expr  =   parens expr
-      <|> identifier
+expr  = parens expr <|> identifier
 
-
-lexer :: P.GenTokenParser String u Identity
-lexer = P.makeTokenParser haskellDef
+lexer :: T.GenTokenParser String u Identity
+lexer = T.makeTokenParser haskellDef
 
 parens :: ParsecT String u Identity a -> ParsecT String u Identity a
-parens = P.parens lexer
+parens = T.parens lexer
 
 braces :: ParsecT String u Identity a -> ParsecT String u Identity a
-braces      = P.braces lexer
+braces = T.braces lexer
 
 identifier :: ParsecT String u Identity String
-identifier  = P.identifier lexer
+identifier = T.identifier lexer
 
 reserved :: String -> ParsecT String u Identity ()
-reserved    = P.reserved lexer
+reserved = T.reserved lexer
