@@ -116,7 +116,7 @@ stringLetter :: ParsecT String u Identity Char
 stringLetter = satisfy (\c -> (c /= '"') && (c /= '\\') && (c > '\026'))
 
 stringEscape :: ParsecT String u Identity (Maybe Char)
-stringEscape = do{ char '\\'
+stringEscape = do { char '\\'
                     ;     do{ escapeGap  ; return Nothing }
                       <|> do{ escapeEmpty; return Nothing }
                       <|> do{ esc <- escapeCode; return (Just esc) }
@@ -126,9 +126,9 @@ escapeEmpty :: ParsecT String u Identity Char
 escapeEmpty = char '&'
 
 escapeGap :: ParsecT String u Identity Char
-escapeGap = do{ many1 space
-                    ; char '\\' <?> "end of string gap"
-                    }
+escapeGap = do
+  many1 space
+  char '\\' <?> "end of string gap"
 
 escapeCode :: ParsecT String u Identity Char
 escapeCode = charEsc <|> charNum <|> charAscii <|> charControl <?> "escape code"
@@ -150,254 +150,212 @@ charNum = do
 
 charEsc :: ParsecT String u Identity Char
 charEsc = choice (map parseEsc escMap)
-                where
-                  parseEsc (c,code)     = do{ char c; return code }
+  where parseEsc (c, code) = char c >> return code
 
 charAscii :: ParsecT String u Identity Char
-charAscii       = choice (map parseAscii asciiMap)
-                where
-                  parseAscii (asc,code) = try (do{ string asc; return code })
+charAscii = choice (map parseAscii asciiMap)
+  where parseAscii (asc,code) = try (do{ string asc; return code })
 
 escMap :: [(Char, Char)]
-escMap          = zip "abfnrtv\\\"\'" "\a\b\f\n\r\t\v\\\"\'"
+escMap = zip "abfnrtv\\\"\'" "\a\b\f\n\r\t\v\\\"\'"
 
 asciiMap :: [(String, Char)]
-asciiMap        = zip (ascii3codes ++ ascii2codes) (ascii3 ++ ascii2)
+asciiMap = zip (ascii3codes ++ ascii2codes) (ascii3 ++ ascii2)
 
 ascii2codes :: [String]
-ascii2codes     = ["BS","HT","LF","VT","FF","CR","SO","SI","EM",
-                   "FS","GS","RS","US","SP"]
+ascii2codes = [ "BS", "HT", "LF", "VT", "FF", "CR", "SO", "SI", "EM", "FS", "GS", "RS", "US", "SP" ]
 
 ascii3codes :: [String]
-ascii3codes     = ["NUL","SOH","STX","ETX","EOT","ENQ","ACK","BEL",
-                   "DLE","DC1","DC2","DC3","DC4","NAK","SYN","ETB",
-                   "CAN","SUB","ESC","DEL"]
+ascii3codes = [ "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL", "DLE", "DC1", "DC2", "DC3"
+              , "DC4", "NAK", "SYN", "ETB", "CAN", "SUB", "ESC", "DEL"]
 
 ascii2 :: String
-ascii2          = ['\BS','\HT','\LF','\VT','\FF','\CR','\SO','\SI',
-                   '\EM','\FS','\GS','\RS','\US','\SP']
+ascii2 =  [ '\BS', '\HT', '\LF', '\VT', '\FF', '\CR', '\SO', '\SI', '\EM', '\FS', '\GS', '\RS', '\US', '\SP' ]
 
 ascii3 :: String
-ascii3          = ['\NUL','\SOH','\STX','\ETX','\EOT','\ENQ','\ACK',
-                   '\BEL','\DLE','\DC1','\DC2','\DC3','\DC4','\NAK',
-                   '\SYN','\ETB','\CAN','\SUB','\ESC','\DEL']
+ascii3 =  [ '\NUL', '\SOH', '\STX', '\ETX', '\EOT', '\ENQ', '\ACK'
+          , '\BEL', '\DLE', '\DC1', '\DC2', '\DC3', '\DC4', '\NAK'
+          , '\SYN', '\ETB', '\CAN', '\SUB', '\ESC', '\DEL'
+          ]
 
-
------------------------------------------------------------
------------------------------------------------------------
 naturalOrFloat :: ParsecT String u Identity (Either Integer Double)
-naturalOrFloat  = lexeme natFloat   <?> "number"
+naturalOrFloat = lexeme natFloat   <?> "number"
 
 float :: ParsecT String u Identity Double
-float           = lexeme floating   <?> "float"
+float = lexeme floating   <?> "float"
 
 integer :: ParsecT String u Identity Integer
-integer         = lexeme int        <?> "integer"
+integer = lexeme int <?> "integer"
 
 natural :: ParsecT String u Identity Integer
-natural         = lexeme nat        <?> "natural"
+natural = lexeme nat <?> "natural"
 
 floating :: ParsecT String u Identity Double
-floating        = do{ n <- decimal
-                    ; fractExponent n
-                    }
+floating = do
+  n <- decimal
+  fractExponent n
 
 natFloat :: ParsecT String u Identity (Either Integer Double)
-natFloat        = do{ char '0'
-                    ; zeroNumFloat
-                    }
-                  <|> decimalFloat
+natFloat = (char '0' >> zeroNumFloat) <|> decimalFloat
 
 zeroNumFloat :: ParsecT String u Identity (Either Integer Double)
-zeroNumFloat    =  do{ n <- hexadecimal <|> octal
-                     ; return (Left n)
-                     }
-                <|> decimalFloat
-                <|> fractFloat 0
-                <|> return (Left 0)
+zeroNumFloat = nonDecimal <|> decimalFloat <|> fractFloat 0 <|> return (Left 0)
+  where nonDecimal = do
+          n <- hexadecimal <|> octal
+          return (Left n)
 
 decimalFloat :: ParsecT String u Identity (Either Integer Double)
-decimalFloat    = do{ n <- decimal
-                    ; option (Left n)
-                             (fractFloat n)
-                    }
+decimalFloat = do
+  n <- decimal
+  option (Left n) (fractFloat n)
 
 fractFloat :: (Show a, Read b) => a -> ParsecT String u Identity (Either a1 b)
-fractFloat n    = do{ f <- fractExponent n
-                    ; return (Right f)
-                    }
+fractFloat n = do
+  f <- fractExponent n
+  return (Right f)
 
 fractExponent :: (Show a1, Read a) => a1 -> ParsecT String u Identity a
-fractExponent n = do{ fract <- fraction
-                    ; expo  <- option "" exponent'
-                    ; readDouble (show n ++ fract ++ expo)
-                    }
-                <|>
-                  do{ expo <- exponent'
-                    ; readDouble (show n ++ expo)
-                    }
-                  where
-                    readDouble s =
-                      case reads s of
-                        [(x, "")] -> return x
-                        _         -> parserZero
+fractExponent n = fractExponent1 <|> fractExponent2
+  where readDouble s = case reads s of
+          [(x, "")] -> return x
+          _         -> parserZero
+        fractExponent1 = do
+          fract <- fraction
+          expo  <- option "" exponent'
+          readDouble (show n ++ fract ++ expo)
+        fractExponent2 = do
+          expo <- exponent'
+          readDouble (show n ++ expo)
 
 fraction ::  ParsecT String u Identity String
-fraction        = do{ char '.'
-                    ; digits <- many1 digit <?> "fraction"
-                    ; return ('.' : digits)
-                    }
-                  <?> "fraction"
+fraction = do
+      char '.'
+      digits <- many1 digit <?> "fraction"
+      return ('.' : digits)
+  <?> "fraction"
 
 exponent' :: ParsecT String u Identity String
-exponent'       = do{ oneOf "eE"
-                    ; sign' <- fmap (:[]) (oneOf "+-") <|> return ""
-                    ; e <- decimal <?> "exponent"
-                    ; return ('e' : sign' ++ show e)
-                    }
-                  <?> "exponent"
+exponent' = do
+      oneOf "eE"
+      sign' <- fmap (:[]) (oneOf "+-") <|> return ""
+      e <- decimal <?> "exponent"
+      return ('e' : sign' ++ show e)
+  <?> "exponent"
 
 int :: ParsecT String u Identity Integer
-int             = do{ f <- lexeme sign
-                    ; n <- nat
-                    ; return (f n)
-                    }
+int = do
+  f <- lexeme sign
+  n <- nat
+  return (f n)
 
 sign :: ParsecT String u Identity (Integer -> Integer)
-sign            =   (char '-' >> return negate)
-                <|> (char '+' >> return id)
-                <|> return id
+sign  =   (char '-' >> return negate)
+      <|> (char '+' >> return id)
+      <|> return id
 
 nat :: ParsecT String u Identity Integer
-nat             = zeroNumber <|> decimal
+nat = zeroNumber <|> decimal
 
 zeroNumber :: ParsecT String u Identity Integer
-zeroNumber      = do{ char '0'
-                    ; hexadecimal <|> octal <|> decimal <|> return 0
-                    }
-                  <?> ""
+zeroNumber = do
+      char '0'
+      hexadecimal <|> octal <|> decimal <|> return 0
+  <?> ""
 
 decimal :: ParsecT String u Identity Integer
-decimal         = number 10 digit
+decimal = number 10 digit
 
 hexadecimal :: ParsecT String u Identity Integer
-hexadecimal     = do{ oneOf "xX"; number 16 hexDigit }
+hexadecimal = oneOf "xX" >> number 16 hexDigit
 
 octal :: ParsecT String u Identity Integer
-octal           = do{ oneOf "oO"; number 8 octDigit  }
+octal = oneOf "oO" >> number 8 octDigit
 
 number :: Stream s m t => Integer -> ParsecT s u m Char -> ParsecT s u m Integer
-number base baseDigit
-    = do{ digits <- many1 baseDigit
-        ; let n = foldl (\x d -> base*x + toInteger (digitToInt d)) 0 digits
-        ; seq n (return n)
-        }
+number base baseDigit = do
+  digits <- many1 baseDigit
+  let n = foldl (\x d -> base*x + toInteger (digitToInt d)) 0 digits
+  seq n (return n)
 
------------------------------------------------------------
------------------------------------------------------------
 reservedOp :: String -> ParsecT String u Identity ()
-reservedOp name =
-    lexeme $ try $
-    do{ string name
-      ; notFollowedBy opLetter <?> ("end of " ++ show name)
-      }
+reservedOp name = lexeme $ try $ do
+  string name
+  notFollowedBy opLetter <?> ("end of " ++ show name)
 
 operator :: ParsecT String u Identity String
-operator =
-    lexeme $ try $
-    do{ name <- oper
-      ; if isReservedOp name
-         then unexpected ("reserved operator " ++ show name)
-         else return name
-      }
+operator = lexeme $ try $ do
+  name <- oper
+  if isReservedOp name
+    then unexpected ("reserved operator " ++ show name)
+    else return name
 
 oper :: ParsecT String u Identity String
-oper =
-    do{ c <- opStart
-      ; cs <- many opLetter
-      ; return (c:cs)
-      }
-    <?> "operator"
+oper = do
+      c <- opStart
+      cs <- many opLetter
+      return (c:cs)
+  <?> "operator"
 
 isReservedOp :: String -> Bool
 isReservedOp = isReserved (sort reservedOpNames)
 
-
------------------------------------------------------------
------------------------------------------------------------
 reserved :: String -> ParsecT String u Identity ()
-reserved name =
-    lexeme $ try $
-    do{ caseString name
-      ; notFollowedBy identLetter <?> ("end of " ++ show name)
-      }
+reserved name = lexeme $ try $ do
+  caseString name
+  notFollowedBy identLetter <?> ("end of " ++ show name)
 
 caseString :: Stream s m Char => String -> ParsecT s u m String
 caseString name
     | caseSensitive  = string name
-    | otherwise      = do{ walk name; return name }
+    | otherwise      = walk name >> return name
     where
       walk []     = return ()
       walk (c:cs) = do{ caseChar c <?> msg; walk cs }
-
       caseChar c  | isAlpha c  = char (toLower c) <|> char (toUpper c)
                   | otherwise  = char c
-
       msg         = show name
 
-
 identifier :: ParsecT String u Identity String
-identifier =
-    lexeme $ try $
-    do{ name <- ident
-      ; if isReservedName name
-         then unexpected ("reserved word " ++ show name)
-         else return name
-      }
+identifier = lexeme $ try $ do
+  name <- ident
+  if isReservedName name
+    then unexpected ("reserved word " ++ show name)
+    else return name
 
 ident :: ParsecT String u Identity String
-ident
-    = do{ c <- identStart
-        ; cs <- many identLetter
-        ; return (c:cs)
-        }
-    <?> "identifier"
+ident = do
+      c <- identStart
+      cs <- many identLetter
+      return (c:cs)
+  <?> "identifier"
 
 isReservedName :: String -> Bool
-isReservedName name
-    = isReserved theReservedNames caseName
-    where
-      caseName      | caseSensitive  = name
-                    | otherwise               = map toLower name
+isReservedName name = isReserved theReservedNames caseName
+  where caseName  | caseSensitive = name
+                  | otherwise     = map toLower name
 
 isReserved :: Ord t => [t] -> t -> Bool
-isReserved names name
-    = scan names
-    where
-      scan []       = False
-      scan (r:rs)   = case compare r name of
-                        LT  -> scan rs
-                        EQ  -> True
-                        GT  -> False
+isReserved names name = scan names
+  where scan []     = False
+        scan (r:rs) = case compare r name of
+          LT  -> scan rs
+          EQ  -> True
+          GT  -> False
 
 theReservedNames :: [String]
 theReservedNames
-    | caseSensitive  = sort reserved
-    | otherwise                  = sort . map (map toLower) $ reserved
-    where
-      reserved = reservedNames
+    | caseSensitive = sort reserved
+    | otherwise     = sort . map (map toLower) $ reserved
+    where reserved = reservedNames
 
-
-
------------------------------------------------------------
------------------------------------------------------------
 symbol :: String -> ParsecT String u Identity String
-symbol name
-    = lexeme (string name)
+symbol name = lexeme (string name)
 
 lexeme :: ParsecT String u Identity a -> ParsecT String u Identity a
-lexeme p
-    = do{ x <- p; whiteSpace; return x  }
+lexeme p = do
+  x <- p
+  whiteSpace
+  return x
 
 whiteSpace :: ParsecT String u Identity ()
 whiteSpace
@@ -414,22 +372,20 @@ simpleSpace =
     skipMany1 (satisfy isSpace)
 
 oneLineComment :: ParsecT String u Identity ()
-oneLineComment =
-    do{ try (string commentLine)
-      ; skipMany (satisfy (/= '\n'))
-      ; return ()
-      }
+oneLineComment = do
+  try (string commentLine)
+  skipMany (satisfy (/= '\n'))
+  return ()
 
 multiLineComment :: ParsecT String u Identity ()
-multiLineComment =
-    do { try (string commentStart)
-       ; inComment
-       }
+multiLineComment = do
+  try (string commentStart)
+  inComment
 
 inComment :: ParsecT String u Identity ()
 inComment
     | nestedComments  = inCommentMulti
-    | otherwise                = inCommentSingle
+    | otherwise       = inCommentSingle
 
 inCommentMulti :: ParsecT String u Identity ()
 inCommentMulti
