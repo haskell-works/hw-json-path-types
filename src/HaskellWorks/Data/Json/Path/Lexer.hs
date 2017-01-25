@@ -13,6 +13,8 @@ import Text.Parsec.Prim
 import Text.Parsec.Char
 import Text.Parsec.Combinator
 
+type Parser u = ParsecT String u Identity
+
 commentStart :: String
 commentStart = ""
 
@@ -25,16 +27,16 @@ commentLine = ""
 nestedComments :: Bool
 nestedComments = True
 
-identStart :: ParsecT String u Identity Char
+identStart :: Parser u Char
 identStart = letter <|> char '_'
 
-identLetter :: ParsecT String u Identity Char
+identLetter :: Parser u Char
 identLetter = alphaNum <|> oneOf "_'"
 
-opStart :: ParsecT String u Identity Char
+opStart :: Parser u Char
 opStart = opLetter
 
-opLetter :: ParsecT String u Identity Char
+opLetter :: Parser u Char
 opLetter = oneOf ":!#$%&*+./<=>?@\\^|-~"
 
 reservedNames :: [String]
@@ -46,59 +48,59 @@ reservedOpNames = []
 caseSensitive :: Bool
 caseSensitive = True
 
-parens :: ParsecT String u Identity a -> ParsecT String u Identity a
+parens :: Parser u a -> Parser u a
 parens = between (symbol "(") (symbol ")")
 
-braces :: ParsecT String u Identity a -> ParsecT String u Identity a
+braces :: Parser u a -> Parser u a
 braces = between (symbol "{") (symbol "}")
 
-angles :: ParsecT String u Identity a -> ParsecT String u Identity a
+angles :: Parser u a -> Parser u a
 angles = between (symbol "<") (symbol ">")
 
-brackets :: ParsecT String u Identity a -> ParsecT String u Identity a
+brackets :: Parser u a -> Parser u a
 brackets = between (symbol "[") (symbol "]")
 
-semi :: ParsecT String u Identity String
+semi :: Parser u String
 semi = symbol ";"
 
-comma :: ParsecT String u Identity String
+comma :: Parser u String
 comma = symbol ","
 
-dot :: ParsecT String u Identity String
+dot :: Parser u String
 dot = symbol "."
 
-colon :: ParsecT String u Identity String
+colon :: Parser u String
 colon = symbol ":"
 
-commaSep :: ParsecT String u Identity a -> ParsecT String u Identity [a]
+commaSep :: Parser u a -> Parser u [a]
 commaSep p = sepBy p comma
 
-semiSep :: ParsecT String u Identity a -> ParsecT String u Identity [a]
+semiSep :: Parser u a -> Parser u [a]
 semiSep p = sepBy p semi
 
-commaSep1 :: ParsecT String u Identity a -> ParsecT String u Identity [a]
+commaSep1 :: Parser u a -> Parser u [a]
 commaSep1 p = sepBy1 p comma
 
-semiSep1 :: ParsecT String u Identity a -> ParsecT String u Identity [a]
+semiSep1 :: Parser u a -> Parser u [a]
 semiSep1 p = sepBy1 p semi
 
-charLiteral :: ParsecT String u Identity Char
+charLiteral :: Parser u Char
 charLiteral = lexeme (between (char '\'')
                                   (char '\'' <?> "end of character")
                                   characterChar )
                 <?> "character"
 
-characterChar :: ParsecT String u Identity Char
+characterChar :: Parser u Char
 characterChar = charLetter <|> charEscape
                 <?> "literal character"
 
-charEscape :: ParsecT String u Identity Char
+charEscape :: Parser u Char
 charEscape = do { char '\\'; escapeCode }
 
-charLetter :: ParsecT String u Identity Char
+charLetter :: Parser u Char
 charLetter = satisfy (\c -> (c /= '\'') && (c /= '\\') && (c > '\026'))
 
-stringLiteral :: ParsecT String u Identity String
+stringLiteral :: Parser u String
 stringLiteral = lexeme (
                   do{ str <- between (char '"')
                                      (char '"' <?> "end of string")
@@ -107,39 +109,39 @@ stringLiteral = lexeme (
                     }
                   <?> "literal string")
 
-stringChar :: ParsecT String u Identity (Maybe Char)
+stringChar :: Parser u (Maybe Char)
 stringChar =   do{ c <- stringLetter; return (Just c) }
                 <|> stringEscape
                 <?> "string character"
 
-stringLetter :: ParsecT String u Identity Char
+stringLetter :: Parser u Char
 stringLetter = satisfy (\c -> (c /= '"') && (c /= '\\') && (c > '\026'))
 
-stringEscape :: ParsecT String u Identity (Maybe Char)
+stringEscape :: Parser u (Maybe Char)
 stringEscape = do { char '\\'
                     ;     do{ escapeGap  ; return Nothing }
                       <|> do{ escapeEmpty; return Nothing }
                       <|> do{ esc <- escapeCode; return (Just esc) }
                     }
 
-escapeEmpty :: ParsecT String u Identity Char
+escapeEmpty :: Parser u Char
 escapeEmpty = char '&'
 
-escapeGap :: ParsecT String u Identity Char
+escapeGap :: Parser u Char
 escapeGap = do
   many1 space
   char '\\' <?> "end of string gap"
 
-escapeCode :: ParsecT String u Identity Char
+escapeCode :: Parser u Char
 escapeCode = charEsc <|> charNum <|> charAscii <|> charControl <?> "escape code"
 
-charControl :: ParsecT String u Identity Char
+charControl :: Parser u Char
 charControl = do
   char '^'
   code <- upper
   return (toEnum (fromEnum code - fromEnum 'A' + 1))
 
-charNum :: ParsecT String u Identity Char
+charNum :: Parser u Char
 charNum = do
   code <- decimal
           <|> (char 'o' >> number 8 octDigit)
@@ -148,11 +150,11 @@ charNum = do
     then fail "invalid escape sequence"
     else return (toEnum (fromInteger code))
 
-charEsc :: ParsecT String u Identity Char
+charEsc :: Parser u Char
 charEsc = choice (map parseEsc escMap)
   where parseEsc (c, code) = char c >> return code
 
-charAscii :: ParsecT String u Identity Char
+charAscii :: Parser u Char
 charAscii = choice (map parseAscii asciiMap)
   where parseAscii (asc,code) = try (do{ string asc; return code })
 
@@ -178,43 +180,43 @@ ascii3 =  [ '\NUL', '\SOH', '\STX', '\ETX', '\EOT', '\ENQ', '\ACK'
           , '\SYN', '\ETB', '\CAN', '\SUB', '\ESC', '\DEL'
           ]
 
-naturalOrFloat :: ParsecT String u Identity (Either Integer Double)
+naturalOrFloat :: Parser u (Either Integer Double)
 naturalOrFloat = lexeme natFloat   <?> "number"
 
-float :: ParsecT String u Identity Double
+float :: Parser u Double
 float = lexeme floating   <?> "float"
 
-integer :: ParsecT String u Identity Integer
+integer :: Parser u Integer
 integer = lexeme int <?> "integer"
 
-natural :: ParsecT String u Identity Integer
+natural :: Parser u Integer
 natural = lexeme nat <?> "natural"
 
-floating :: ParsecT String u Identity Double
+floating :: Parser u Double
 floating = do
   n <- decimal
   fractExponent n
 
-natFloat :: ParsecT String u Identity (Either Integer Double)
+natFloat :: Parser u (Either Integer Double)
 natFloat = (char '0' >> zeroNumFloat) <|> decimalFloat
 
-zeroNumFloat :: ParsecT String u Identity (Either Integer Double)
+zeroNumFloat :: Parser u (Either Integer Double)
 zeroNumFloat = nonDecimal <|> decimalFloat <|> fractFloat 0 <|> return (Left 0)
   where nonDecimal = do
           n <- hexadecimal <|> octal
           return (Left n)
 
-decimalFloat :: ParsecT String u Identity (Either Integer Double)
+decimalFloat :: Parser u (Either Integer Double)
 decimalFloat = do
   n <- decimal
   option (Left n) (fractFloat n)
 
-fractFloat :: (Show a, Read b) => a -> ParsecT String u Identity (Either a1 b)
+fractFloat :: (Show a, Read b) => a -> Parser u (Either a1 b)
 fractFloat n = do
   f <- fractExponent n
   return (Right f)
 
-fractExponent :: (Show a1, Read a) => a1 -> ParsecT String u Identity a
+fractExponent :: (Show a1, Read a) => a1 -> Parser u a
 fractExponent n = fractExponent1 <|> fractExponent2
   where readDouble s = case reads s of
           [(x, "")] -> return x
@@ -227,14 +229,14 @@ fractExponent n = fractExponent1 <|> fractExponent2
           expo <- exponent'
           readDouble (show n ++ expo)
 
-fraction ::  ParsecT String u Identity String
+fraction ::  Parser u String
 fraction = do
       char '.'
       digits <- many1 digit <?> "fraction"
       return ('.' : digits)
   <?> "fraction"
 
-exponent' :: ParsecT String u Identity String
+exponent' :: Parser u String
 exponent' = do
       oneOf "eE"
       sign' <- fmap (:[]) (oneOf "+-") <|> return ""
@@ -242,33 +244,33 @@ exponent' = do
       return ('e' : sign' ++ show e)
   <?> "exponent"
 
-int :: ParsecT String u Identity Integer
+int :: Parser u Integer
 int = do
   f <- lexeme sign
   n <- nat
   return (f n)
 
-sign :: ParsecT String u Identity (Integer -> Integer)
+sign :: Parser u (Integer -> Integer)
 sign  =   (char '-' >> return negate)
       <|> (char '+' >> return id)
       <|> return id
 
-nat :: ParsecT String u Identity Integer
+nat :: Parser u Integer
 nat = zeroNumber <|> decimal
 
-zeroNumber :: ParsecT String u Identity Integer
+zeroNumber :: Parser u Integer
 zeroNumber = do
       char '0'
       hexadecimal <|> octal <|> decimal <|> return 0
   <?> ""
 
-decimal :: ParsecT String u Identity Integer
+decimal :: Parser u Integer
 decimal = number 10 digit
 
-hexadecimal :: ParsecT String u Identity Integer
+hexadecimal :: Parser u Integer
 hexadecimal = oneOf "xX" >> number 16 hexDigit
 
-octal :: ParsecT String u Identity Integer
+octal :: Parser u Integer
 octal = oneOf "oO" >> number 8 octDigit
 
 number :: Stream s m t => Integer -> ParsecT s u m Char -> ParsecT s u m Integer
@@ -277,19 +279,19 @@ number base baseDigit = do
   let n = foldl (\x d -> base*x + toInteger (digitToInt d)) 0 digits
   seq n (return n)
 
-reservedOp :: String -> ParsecT String u Identity ()
+reservedOp :: String -> Parser u ()
 reservedOp name = lexeme $ try $ do
   string name
   notFollowedBy opLetter <?> ("end of " ++ show name)
 
-operator :: ParsecT String u Identity String
+operator :: Parser u String
 operator = lexeme $ try $ do
   name <- oper
   if isReservedOp name
     then unexpected ("reserved operator " ++ show name)
     else return name
 
-oper :: ParsecT String u Identity String
+oper :: Parser u String
 oper = do
       c <- opStart
       cs <- many opLetter
@@ -299,7 +301,7 @@ oper = do
 isReservedOp :: String -> Bool
 isReservedOp = isReserved (sort reservedOpNames)
 
-reserved :: String -> ParsecT String u Identity ()
+reserved :: String -> Parser u ()
 reserved name = lexeme $ try $ do
   caseString name
   notFollowedBy identLetter <?> ("end of " ++ show name)
@@ -315,14 +317,14 @@ caseString name
                   | otherwise  = char c
       msg         = show name
 
-identifier :: ParsecT String u Identity String
+identifier :: Parser u String
 identifier = lexeme $ try $ do
   name <- ident
   if isReservedName name
     then unexpected ("reserved word " ++ show name)
     else return name
 
-ident :: ParsecT String u Identity String
+ident :: Parser u String
 ident = do
       c <- identStart
       cs <- many identLetter
@@ -348,16 +350,16 @@ theReservedNames
     | otherwise     = sort . map (map toLower) $ reserved
     where reserved = reservedNames
 
-symbol :: String -> ParsecT String u Identity String
+symbol :: String -> Parser u String
 symbol name = lexeme (string name)
 
-lexeme :: ParsecT String u Identity a -> ParsecT String u Identity a
+lexeme :: Parser u a -> Parser u a
 lexeme p = do
   x <- p
   whiteSpace
   return x
 
-whiteSpace :: ParsecT String u Identity ()
+whiteSpace :: Parser u ()
 whiteSpace
     | noLine && noMulti  = skipMany (simpleSpace <?> "")
     | noLine             = skipMany (simpleSpace <|> multiLineComment <?> "")
@@ -367,27 +369,27 @@ whiteSpace
       noLine  = null commentLine
       noMulti = null commentStart
 
-simpleSpace :: ParsecT String u Identity ()
+simpleSpace :: Parser u ()
 simpleSpace =
     skipMany1 (satisfy isSpace)
 
-oneLineComment :: ParsecT String u Identity ()
+oneLineComment :: Parser u ()
 oneLineComment = do
   try (string commentLine)
   skipMany (satisfy (/= '\n'))
   return ()
 
-multiLineComment :: ParsecT String u Identity ()
+multiLineComment :: Parser u ()
 multiLineComment = do
   try (string commentStart)
   inComment
 
-inComment :: ParsecT String u Identity ()
+inComment :: Parser u ()
 inComment
     | nestedComments  = inCommentMulti
     | otherwise       = inCommentSingle
 
-inCommentMulti :: ParsecT String u Identity ()
+inCommentMulti :: Parser u ()
 inCommentMulti
     =   do{ try (string commentEnd) ; return () }
     <|> do{ multiLineComment                     ; inCommentMulti }
@@ -397,7 +399,7 @@ inCommentMulti
     where
       startEnd   = nub (commentEnd ++ commentStart)
 
-inCommentSingle :: ParsecT String u Identity ()
+inCommentSingle :: Parser u ()
 inCommentSingle
     =   do{ try (string commentEnd); return () }
     <|> do{ skipMany1 (noneOf startEnd)         ; inCommentSingle }
