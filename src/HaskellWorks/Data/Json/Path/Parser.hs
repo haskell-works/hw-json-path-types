@@ -17,7 +17,7 @@ import Data.Maybe
 import Data.Scientific
 import HaskellWorks.Data.Json.Path.Ast
 
-pNumber :: Parser Int
+pNumber :: Parser Integer
 pNumber = decimal
 
 underscore :: Parser Char
@@ -49,7 +49,7 @@ quotedField = singleQuotedField <|> doubleQuotedField
 quotedValue :: Parser String
 quotedValue = singleQuotedValue <|> doubleQuotedValue
 
-arraySliceStep :: Parser (Maybe Int)
+arraySliceStep :: Parser (Maybe Integer)
 arraySliceStep = ":" *> optional pNumber
 
 arraySlice :: Parser ArraySlice

@@ -1,7 +1,5 @@
 module HaskellWorks.Data.Json.Path.Ast where
 
-import Data.Int
-
 data AstToken
   = AstTokenOfPathToken   PathToken
   | AstTokenOfFilterValue FilterValue
@@ -21,13 +19,13 @@ data ArrayAccessor
   | ArrayAccessorOfArraySlice         ArraySlice
   deriving (Eq, Show)
 
-data ArrayRandomAccess = ArrayRandomAccess [Int]
+data ArrayRandomAccess = ArrayRandomAccess [Integer]
   deriving (Eq, Show)
 
 data ArraySlice = ArraySlice
-  { start :: Maybe Int
-  , stop  :: Maybe Int
-  , step  :: Int
+  { start :: Maybe Integer
+  , stop  :: Maybe Integer
+  , step  :: Integer
   }
   deriving (Eq, Show)
 
@@ -51,7 +49,7 @@ data FilterDirectValue
   deriving (Eq, Show)
 
 data JPNumber
-  = JPLong    Int64
+  = JPLong    Integer
   | JPDouble  Double
   deriving (Eq, Show)
 

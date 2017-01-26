@@ -1,4 +1,6 @@
+{-# LANGUAGE BangPatterns                 #-}
 {-# LANGUAGE FlexibleContexts             #-}
+{-# LANGUAGE OverloadedStrings            #-}
 {-# LANGUAGE PolymorphicComponents        #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing  #-}
 {-# OPTIONS_GHC -Wno-unused-do-bind       #-}
@@ -6,12 +8,17 @@
 
 module HaskellWorks.Data.Json.Path.Lexer where
 
-import Data.Char (isAlpha, toLower, toUpper, isSpace, digitToInt)
-import Data.List (nub, sort)
 import Control.Monad.Identity
-import Text.Parsec.Prim
+import Data.Char (isAlpha, toLower, toUpper, isSpace, digitToInt, ord, isDigit)
+import Data.List (foldl', nub, sort)
+import Data.List.Extra (replace)
+import Data.Maybe
+import qualified Data.Scientific as Sci
+import Data.Scientific (Scientific)
+import HaskellWorks.Data.Json.Path.Ast
 import Text.Parsec.Char
 import Text.Parsec.Combinator
+import Text.Parsec.Prim
 
 type Parser u = ParsecT String u Identity
 
@@ -264,7 +271,7 @@ zeroNumber = do
       hexadecimal <|> octal <|> decimal <|> return 0
   <?> ""
 
-decimal :: Parser u Integer
+decimal :: Integral a => Parser u a
 decimal = number 10 digit
 
 hexadecimal :: Parser u Integer
@@ -273,11 +280,11 @@ hexadecimal = oneOf "xX" >> number 16 hexDigit
 octal :: Parser u Integer
 octal = oneOf "oO" >> number 8 octDigit
 
-number :: Stream s m t => Integer -> ParsecT s u m Char -> ParsecT s u m Integer
+number :: (Integral a, Stream s m t) => Integer -> ParsecT s u m Char -> ParsecT s u m a
 number base baseDigit = do
   digits <- many1 baseDigit
   let n = foldl (\x d -> base*x + toInteger (digitToInt d)) 0 digits
-  seq n (return n)
+  seq n (return (fromIntegral n))
 
 reservedOp :: String -> Parser u ()
 reservedOp name = lexeme $ try $ do
@@ -407,3 +414,220 @@ inCommentSingle
     <?> "end of comment"
     where
       startEnd   = nub (commentEnd ++ commentStart)
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+pNumber :: Parser u Integer
+pNumber = decimal
+
+underscore :: Parser u Char
+underscore = satisfy (== '_')
+
+hyphen :: Parser u Char
+hyphen = satisfy (== '-')
+
+field :: Parser u String
+field = (:)
+  <$>      (char '$' <|> digit <|> letter)
+  <*> many (char '$' <|> digit <|> letter <|> underscore <|> hyphen)
+
+singleQuotedField :: Parser u String
+singleQuotedField = replace "\\'" "'" <$> (symbol "'" *> many (satisfy (/= '\'')) <* symbol "'")
+
+doubleQuotedField :: Parser u String
+doubleQuotedField = replace "\\\"" "\"" <$> (symbol "\"" *> many (satisfy (/= '"')) <* symbol "\"")
+
+singleQuotedValue :: Parser u String
+singleQuotedValue = replace "\\'" "'" <$> (symbol "'" *> many (satisfy (/= '\'')) <* symbol "'")
+
+doubleQuotedValue :: Parser u String
+doubleQuotedValue = replace "\\\"" "\"" <$> (symbol "\"" *> many (satisfy (/= '"')) <* symbol "\"")
+
+quotedField :: Parser u String
+quotedField = singleQuotedField <|> doubleQuotedField
+
+quotedValue :: Parser u String
+quotedValue = singleQuotedValue <|> doubleQuotedValue
+
+arraySliceStep :: Parser u (Maybe Integer)
+arraySliceStep = symbol ":" *> optionMaybe pNumber
+
+arraySlice :: Parser u ArraySlice
+arraySlice = sliceOf <$> (symbol ":" *> optionMaybe pNumber) <*> optionMaybe arraySliceStep
+  where sliceOf end step' = ArraySlice Nothing end (fromMaybe 1 (join step'))
+
+arrayRandomAccess :: Parser u (Maybe ArrayRandomAccess)
+arrayRandomAccess = (ArrayRandomAccess <$>) <$> optionMaybe (many1 (symbol "," *> pNumber))
+
+arraySlicePartial :: Parser u ArrayAccessor
+arraySlicePartial = ArrayAccessorOfArraySlice <$> (accessorOf <$> pNumber <*> arraySlice)
+  where accessorOf i as = as { start = Just i }
+
+arrayRandomAccessPartial :: Parser u ArrayAccessor
+arrayRandomAccessPartial = ArrayAccessorOfArrayRandomAccess <$> (accessorOf <$> pNumber <*> arrayRandomAccess)
+  where accessorOf i Nothing                            = ArrayRandomAccess [i]
+        accessorOf i (Just (ArrayRandomAccess indices)) = ArrayRandomAccess (i : indices)
+
+arrayPartial :: Parser u ArrayAccessor
+arrayPartial = arraySlicePartial <|> arrayRandomAccessPartial
+
+arrayAll :: Parser u ArraySlice
+arrayAll = symbol "*" *> return (ArraySlice Nothing Nothing 1)
+
+arrayAccessors :: Parser u ArrayAccessor
+arrayAccessors = symbol "[" *> arraySpec <* symbol "]"
+  where arraySpec
+          =   (ArrayAccessorOfArraySlice <$> arrayAll)
+          <|> arrayPartial
+          <|> (ArrayAccessorOfArraySlice <$> arraySlice)
+
+numberValue :: Parser u JPNumber
+numberValue = numberOf <$> scientific
+  where numberOf :: Scientific -> JPNumber
+        numberOf v = case Sci.floatingOrInteger v of
+          Left r  -> JPDouble r
+          Right i -> JPLong i
+
+booleanValue :: Parser u FilterDirectValue
+booleanValue
+  =   symbol "true"  *> return JPTrue
+  <|> symbol "false" *> return JPFalse
+
+nullValue :: Parser u FilterValue
+nullValue = symbol "null" *> return (FilterValueOfFilterDirectValue JPNull)
+
+stringValue :: Parser u JPString
+stringValue = JPString <$> quotedValue
+
+value :: Parser u FilterValue
+value
+  =   FilterValueOfFilterDirectValue <$> booleanValue
+  <|> FilterValueOfFilterDirectValue <$> (FilterDirectValueOfJPNumber <$> numberValue)
+  <|> nullValue
+  <|> FilterValueOfJPString <$> stringValue
+
+comparisonOperator :: Parser u ComparisonOperator
+comparisonOperator
+  =   (symbol "=="  *> return EqOperator)
+  <|> (symbol "!="  *> return NotEqOperator)
+  <|> (symbol "<="  *> return LessOrEqOperator)
+  <|> (symbol "<"   *> return LessOperator)
+  <|> (symbol ">="  *> return GreaterOrEqOperator)
+  <|> (symbol ">"   *> return GreaterOperator)
+
+matchOperator :: Parser u MatchOperator
+matchOperator = symbol "=~" *> return MatchOperator
+
+current :: Parser u PathToken
+current = symbol "@" *> return CurrentNode
+
+subQuery :: Parser u SubQuery
+subQuery = SubQuery <$> ((:) <$> (current <|> root) <*> pathSequence)
+
+expression1 :: Parser u FilterToken
+expression1 = tokenOf <$> subQuery <*> optionMaybe ((,) <$> comparisonOperator <*> ((FilterValueOfSubQuery <$> subQuery) <|> value))
+  where tokenOf :: SubQuery -> Maybe (ComparisonOperator, FilterValue) -> FilterToken
+        tokenOf subq1 Nothing           = HasFilter subq1
+        tokenOf lhs   (Just (op, rhs))  = ComparisonFilter op (FilterValueOfSubQuery lhs) rhs
+
+expression3 :: Parser u FilterToken
+expression3 = tokenOf <$> value <*> comparisonOperator <*> (FilterValueOfSubQuery <$> subQuery)
+  where tokenOf lhs op = ComparisonFilter op lhs
+
+expression :: Parser u FilterToken
+expression = expression1 <|> expression3 <|> fail "expression"
+
+pBooleanOperator :: Parser u BinaryBooleanOperator
+pBooleanOperator = (symbol "&&" *> return AndOperator) <|> (symbol "||" *> return OrOperator)
+
+booleanExpression :: Parser u FilterToken
+booleanExpression = tokenOf <$> expression <*> optionMaybe ((,) <$> pBooleanOperator <*> booleanExpression)
+  where tokenOf lhs Nothing = lhs
+        tokenOf lhs1 (Just (AndOperator, BooleanFilter OrOperator lhs2 rhs2)) =
+            BooleanFilter OrOperator (BooleanFilter AndOperator lhs1 lhs2) rhs2
+        tokenOf lhs (Just (op, rhs)) = BooleanFilter op lhs rhs
+
+recursiveSubscriptFilter :: Parser u RecursiveFilterToken
+recursiveSubscriptFilter = RecursiveFilterToken <$> ((symbol "..*" <|> symbol "..") *> subscriptFilter)
+
+subscriptFilter :: Parser u FilterToken
+subscriptFilter = symbol "[?(" *> booleanExpression <* symbol ")]"
+
+subscriptField :: Parser u FieldAccessor
+subscriptField = subscribe <$> (symbol "[" *> sepBy quotedField (symbol ",") <* symbol "]")
+  where subscribe [f1]    = Field f1
+        subscribe fields  = MultiField fields
+
+dotField :: Parser u FieldAccessor
+dotField = Field <$> (symbol "." *> field)
+
+recursiveField :: Parser u FieldAccessor
+recursiveField = RecursiveField <$> (symbol ".." *> field)
+
+anyChild :: Parser u FieldAccessor
+anyChild = (symbol ".*" <|> symbol "['*']" <|> symbol "[\"*\"]") *> return AnyField
+
+recursiveAny :: Parser u FieldAccessor
+recursiveAny = symbol "..*" *> return RecursiveAnyField
+
+fieldAccessors :: Parser u PathToken
+fieldAccessors
+  =   (PathTokenOfFieldAccessor         <$> dotField)
+  <|> (PathTokenOfRecursiveFilterToken  <$> recursiveSubscriptFilter)
+  <|> (PathTokenOfFieldAccessor         <$> recursiveAny)
+  <|> (PathTokenOfFieldAccessor         <$> recursiveField)
+  <|> (PathTokenOfFieldAccessor         <$> anyChild)
+  <|> (PathTokenOfFieldAccessor         <$> subscriptField)
+
+childAccess :: Parser u PathToken
+childAccess = fieldAccessors <|> (PathTokenOfArrayAccessor <$> arrayAccessors)
+
+pathSequence :: Parser u [PathToken]
+pathSequence = many (childAccess <|> (PathTokenOfFilterToken <$> subscriptFilter))
+
+root :: Parser u PathToken
+root = symbol "$" *> return (PathTokenOfFieldAccessor RootNode)
+
+query :: Parser u [PathToken]
+query = (:) <$> root <*> pathSequence
+
+
+-----
+
+scientific :: Parser u Scientific
+scientific = scientifically id
+
+-- A strict pair
+data SP = SP !Integer {-# UNPACK #-}!Int
+
+takeWhile' :: (Char -> Bool) -> Parser u String
+takeWhile' p = (:) <$> satisfy p <*> takeWhile' p <|> return ""
+
+{-# INLINE scientifically #-}
+scientifically :: (Scientific -> a) -> Parser u a
+scientifically h = do
+  !positive <- ((== '+') <$> satisfy (\c -> c == '-' || c == '+')) <|>
+               pure True
+
+  n <- decimal
+
+  let f fracDigits = SP (foldl' step n fracDigits)
+                        (negate $ length fracDigits)
+      step a c = a * 10 + fromIntegral (ord c - 48)
+
+  SP c e <- (satisfy (=='.') *> (f <$> takeWhile' isDigit)) <|>
+            pure (SP n 0)
+
+  let !signedCoeff | positive  =  c
+                   | otherwise = -c
+
+  (satisfy (\w -> w == 'e' || w == 'E') *>
+      fmap (h . Sci.scientific signedCoeff . (e +)) (signed decimal)) <|>
+    return (h $ Sci.scientific signedCoeff    e)
+
+signed :: Num a => Parser u a -> Parser u a
+signed p = (negate <$> (char '-' *> p))
+       <|> (char '+' *> p)
+       <|> p
