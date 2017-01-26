@@ -362,6 +362,7 @@ symbol name = lexeme (string name)
 
 lexeme :: Parser u a -> Parser u a
 lexeme p = do
+  whiteSpace
   x <- p
   whiteSpace
   return x
@@ -420,7 +421,9 @@ inCommentSingle
 --------------------------------------------------------------------------------
 
 pNumber :: Parser u Integer
-pNumber = decimal
+pNumber = mkNumber <$> optionMaybe (symbol "-") <*> decimal
+  where mkNumber :: Maybe String -> Integer -> Integer
+        mkNumber maybeNegative magnitude = foldl (\x _ -> -x) magnitude maybeNegative
 
 underscore :: Parser u Char
 underscore = satisfy (== '_')
@@ -446,10 +449,10 @@ doubleQuotedValue :: Parser u String
 doubleQuotedValue = replace "\\\"" "\"" <$> (symbol "\"" *> many (satisfy (/= '"')) <* symbol "\"")
 
 quotedField :: Parser u String
-quotedField = singleQuotedField <|> doubleQuotedField
+quotedField = try singleQuotedField <|> doubleQuotedField
 
 quotedValue :: Parser u String
-quotedValue = singleQuotedValue <|> doubleQuotedValue
+quotedValue = try singleQuotedValue <|> doubleQuotedValue
 
 arraySliceStep :: Parser u (Maybe Integer)
 arraySliceStep = symbol ":" *> optionMaybe pNumber
@@ -471,7 +474,7 @@ arrayRandomAccessPartial = ArrayAccessorOfArrayRandomAccess <$> (accessorOf <$> 
         accessorOf i (Just (ArrayRandomAccess indices)) = ArrayRandomAccess (i : indices)
 
 arrayPartial :: Parser u ArrayAccessor
-arrayPartial = arraySlicePartial <|> arrayRandomAccessPartial
+arrayPartial = try arraySlicePartial <|> arrayRandomAccessPartial
 
 arrayAll :: Parser u ArraySlice
 arrayAll = symbol "*" *> return (ArraySlice Nothing Nothing 1)
@@ -479,9 +482,9 @@ arrayAll = symbol "*" *> return (ArraySlice Nothing Nothing 1)
 arrayAccessors :: Parser u ArrayAccessor
 arrayAccessors = symbol "[" *> arraySpec <* symbol "]"
   where arraySpec
-          =   (ArrayAccessorOfArraySlice <$> arrayAll)
-          <|> arrayPartial
-          <|> (ArrayAccessorOfArraySlice <$> arraySlice)
+          =   try (ArrayAccessorOfArraySlice <$> arrayAll)
+          <|> try arrayPartial
+          <|>     (ArrayAccessorOfArraySlice <$> arraySlice)
 
 numberValue :: Parser u JPNumber
 numberValue = numberOf <$> scientific
@@ -492,8 +495,8 @@ numberValue = numberOf <$> scientific
 
 booleanValue :: Parser u FilterDirectValue
 booleanValue
-  =   symbol "true"  *> return JPTrue
-  <|> symbol "false" *> return JPFalse
+  =   try (symbol "true"  *> return JPTrue)
+  <|>     symbol "false" *> return JPFalse
 
 nullValue :: Parser u FilterValue
 nullValue = symbol "null" *> return (FilterValueOfFilterDirectValue JPNull)
@@ -503,19 +506,19 @@ stringValue = JPString <$> quotedValue
 
 value :: Parser u FilterValue
 value
-  =   FilterValueOfFilterDirectValue <$> booleanValue
-  <|> FilterValueOfFilterDirectValue <$> (FilterDirectValueOfJPNumber <$> numberValue)
-  <|> nullValue
-  <|> FilterValueOfJPString <$> stringValue
+  =   try (FilterValueOfFilterDirectValue <$> booleanValue)
+  <|> try (FilterValueOfFilterDirectValue <$> (FilterDirectValueOfJPNumber <$> numberValue))
+  <|> try nullValue
+  <|>     FilterValueOfJPString <$> stringValue
 
 comparisonOperator :: Parser u ComparisonOperator
 comparisonOperator
-  =   (symbol "=="  *> return EqOperator)
-  <|> (symbol "!="  *> return NotEqOperator)
-  <|> (symbol "<="  *> return LessOrEqOperator)
-  <|> (symbol "<"   *> return LessOperator)
-  <|> (symbol ">="  *> return GreaterOrEqOperator)
-  <|> (symbol ">"   *> return GreaterOperator)
+  =   try (symbol "=="  *> return EqOperator)
+  <|> try (symbol "!="  *> return NotEqOperator)
+  <|> try (symbol "<="  *> return LessOrEqOperator)
+  <|> try (symbol "<"   *> return LessOperator)
+  <|> try (symbol ">="  *> return GreaterOrEqOperator)
+  <|>     (symbol ">"   *> return GreaterOperator)
 
 matchOperator :: Parser u MatchOperator
 matchOperator = symbol "=~" *> return MatchOperator
@@ -524,10 +527,10 @@ current :: Parser u PathToken
 current = symbol "@" *> return CurrentNode
 
 subQuery :: Parser u SubQuery
-subQuery = SubQuery <$> ((:) <$> (current <|> root) <*> pathSequence)
+subQuery = SubQuery <$> ((:) <$> (try current <|> root) <*> pathSequence)
 
 expression1 :: Parser u FilterToken
-expression1 = tokenOf <$> subQuery <*> optionMaybe ((,) <$> comparisonOperator <*> ((FilterValueOfSubQuery <$> subQuery) <|> value))
+expression1 = tokenOf <$> subQuery <*> optionMaybe ((,) <$> comparisonOperator <*> (try (FilterValueOfSubQuery <$> subQuery) <|> value))
   where tokenOf :: SubQuery -> Maybe (ComparisonOperator, FilterValue) -> FilterToken
         tokenOf subq1 Nothing           = HasFilter subq1
         tokenOf lhs   (Just (op, rhs))  = ComparisonFilter op (FilterValueOfSubQuery lhs) rhs
@@ -537,10 +540,10 @@ expression3 = tokenOf <$> value <*> comparisonOperator <*> (FilterValueOfSubQuer
   where tokenOf lhs op = ComparisonFilter op lhs
 
 expression :: Parser u FilterToken
-expression = expression1 <|> expression3 <|> fail "expression"
+expression = try expression1 <|> try expression3 <|> fail "expression"
 
 pBooleanOperator :: Parser u BinaryBooleanOperator
-pBooleanOperator = (symbol "&&" *> return AndOperator) <|> (symbol "||" *> return OrOperator)
+pBooleanOperator = try (symbol "&&" *> return AndOperator) <|> (symbol "||" *> return OrOperator)
 
 booleanExpression :: Parser u FilterToken
 booleanExpression = tokenOf <$> expression <*> optionMaybe ((,) <$> pBooleanOperator <*> booleanExpression)
@@ -550,7 +553,7 @@ booleanExpression = tokenOf <$> expression <*> optionMaybe ((,) <$> pBooleanOper
         tokenOf lhs (Just (op, rhs)) = BooleanFilter op lhs rhs
 
 recursiveSubscriptFilter :: Parser u RecursiveFilterToken
-recursiveSubscriptFilter = RecursiveFilterToken <$> ((symbol "..*" <|> symbol "..") *> subscriptFilter)
+recursiveSubscriptFilter = RecursiveFilterToken <$> ((try (symbol "..*") <|> symbol "..") *> subscriptFilter)
 
 subscriptFilter :: Parser u FilterToken
 subscriptFilter = symbol "[?(" *> booleanExpression <* symbol ")]"
@@ -567,32 +570,31 @@ recursiveField :: Parser u FieldAccessor
 recursiveField = RecursiveField <$> (symbol ".." *> field)
 
 anyChild :: Parser u FieldAccessor
-anyChild = (symbol ".*" <|> symbol "['*']" <|> symbol "[\"*\"]") *> return AnyField
+anyChild = (try (symbol ".*") <|> try (symbol "['*']") <|> symbol "[\"*\"]") *> return AnyField
 
 recursiveAny :: Parser u FieldAccessor
 recursiveAny = symbol "..*" *> return RecursiveAnyField
 
 fieldAccessors :: Parser u PathToken
 fieldAccessors
-  =   (PathTokenOfFieldAccessor         <$> dotField)
-  <|> (PathTokenOfRecursiveFilterToken  <$> recursiveSubscriptFilter)
-  <|> (PathTokenOfFieldAccessor         <$> recursiveAny)
-  <|> (PathTokenOfFieldAccessor         <$> recursiveField)
-  <|> (PathTokenOfFieldAccessor         <$> anyChild)
-  <|> (PathTokenOfFieldAccessor         <$> subscriptField)
+  =   try (PathTokenOfFieldAccessor         <$> dotField)
+  <|> try (PathTokenOfRecursiveFilterToken  <$> recursiveSubscriptFilter)
+  <|> try (PathTokenOfFieldAccessor         <$> recursiveAny)
+  <|> try (PathTokenOfFieldAccessor         <$> recursiveField)
+  <|> try (PathTokenOfFieldAccessor         <$> anyChild)
+  <|>     (PathTokenOfFieldAccessor         <$> subscriptField)
 
 childAccess :: Parser u PathToken
-childAccess = fieldAccessors <|> (PathTokenOfArrayAccessor <$> arrayAccessors)
+childAccess = try fieldAccessors <|> (PathTokenOfArrayAccessor <$> arrayAccessors)
 
 pathSequence :: Parser u [PathToken]
-pathSequence = many (childAccess <|> (PathTokenOfFilterToken <$> subscriptFilter))
+pathSequence = many (try childAccess <|> (PathTokenOfFilterToken <$> subscriptFilter))
 
 root :: Parser u PathToken
 root = symbol "$" *> return (PathTokenOfFieldAccessor RootNode)
 
 query :: Parser u [PathToken]
 query = (:) <$> root <*> pathSequence
-
 
 -----
 

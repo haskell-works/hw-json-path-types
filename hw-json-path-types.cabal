@@ -53,7 +53,8 @@ test-suite hw-json-path-types-test
   type:                 exitcode-stdio-1.0
   hs-source-dirs:       test
   main-is:              Spec.hs
-  other-modules:        HaskellWorks.Data.Json.Path.ParserSpec
+  other-modules:        HaskellWorks.Data.Json.Path.LexerSpec
+                      , HaskellWorks.Data.Json.Path.ParserSpec
   build-depends:        base                          >= 4          && < 5
                       , array
                       , ansi-wl-pprint
@@ -67,6 +68,7 @@ test-suite hw-json-path-types-test
                       , hw-json-path-types
                       , mmap
                       , mono-traversable
+                      , parsec
                       , resourcet
                       , scientific
                       , text
