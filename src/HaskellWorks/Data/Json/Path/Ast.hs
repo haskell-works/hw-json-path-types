@@ -108,3 +108,5 @@ data PathToken
   | PathTokenOfFieldAccessor        FieldAccessor
   | PathTokenOfRecursiveFilterToken RecursiveFilterToken
   deriving (Eq, Show)
+
+data Path = PathOfAbsolute [PathToken] | PathOfRelative [PathToken]

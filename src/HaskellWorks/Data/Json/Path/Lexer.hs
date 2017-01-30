@@ -598,14 +598,22 @@ fieldAccessors
 childAccess :: Parser u PathToken
 childAccess = try fieldAccessors <|> (PathTokenOfArrayAccessor <$> arrayAccessors)
 
+pathStep :: Parser u PathToken
+pathStep = try childAccess <|> (PathTokenOfFilterToken <$> subscriptFilter)
+
 pathSequence :: Parser u [PathToken]
-pathSequence = many (try childAccess <|> (PathTokenOfFilterToken <$> subscriptFilter))
+pathSequence = many pathStep
 
 root :: Parser u PathToken
 root = symbol "$" *> return (PathTokenOfFieldAccessor RootNode)
 
 query :: Parser u [PathToken]
 query = (:) <$> root <*> pathSequence
+
+path :: Parser u Path
+path
+  =   PathOfAbsolute <$> try (root *> pathSequence)
+  <|> PathOfRelative <$> pathSequence
 
 -----
 
