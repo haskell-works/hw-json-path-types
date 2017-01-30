@@ -69,6 +69,17 @@ data BinaryBooleanOperator
 
 data MatchOperator = MatchOperator deriving (Eq, Show)
 
+data RegexMode = RegexMode
+  { regexInsensitive :: Bool
+  }
+  deriving (Eq, Show)
+
+data RegexLiteral = RegexLiteral
+  { regexString   :: String
+  , regexMode     :: RegexMode
+  }
+  deriving (Eq, Show)
+
 data FilterToken
   = BooleanFilter
     { booleanOperator   :: BinaryBooleanOperator
@@ -79,6 +90,10 @@ data FilterToken
     { operator          :: ComparisonOperator
     , comparisonLhs     :: FilterValue
     , comparisonRhs     :: FilterValue
+    }
+  | MatchFilter
+    { matchValue        :: SubQuery
+    , matchRegex        :: RegexLiteral
     }
   | HasFilter SubQuery
   deriving (Eq, Show)

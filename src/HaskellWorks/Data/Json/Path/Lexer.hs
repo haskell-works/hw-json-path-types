@@ -529,18 +529,29 @@ current = symbol "@" *> return CurrentNode
 subQuery :: Parser u SubQuery
 subQuery = SubQuery <$> ((:) <$> (try current <|> root) <*> pathSequence)
 
-expression1 :: Parser u FilterToken
-expression1 = tokenOf <$> subQuery <*> optionMaybe ((,) <$> comparisonOperator <*> (try (FilterValueOfSubQuery <$> subQuery) <|> value))
+expression2 :: Parser u FilterToken
+expression2 = tokenOf <$> subQuery <*> optionMaybe ((,) <$> comparisonOperator <*> (try (FilterValueOfSubQuery <$> subQuery) <|> value))
   where tokenOf :: SubQuery -> Maybe (ComparisonOperator, FilterValue) -> FilterToken
         tokenOf subq1 Nothing           = HasFilter subq1
         tokenOf lhs   (Just (op, rhs))  = ComparisonFilter op (FilterValueOfSubQuery lhs) rhs
+
+pRegexMode :: Parser u RegexMode
+pRegexMode = RegexMode <$> (isJust <$> optionMaybe (char 'i'))
+
+regexLiteral :: Parser u RegexLiteral
+regexLiteral = RegexLiteral <$> (char '/' *> many1 (satisfy (/= '/')) <* char '/') <*> pRegexMode
+
+expression1 :: Parser u FilterToken
+expression1 = tokenOf <$> subQuery <*> matchOperator <*> regexLiteral
+  where tokenOf :: SubQuery -> MatchOperator -> RegexLiteral -> FilterToken
+        tokenOf subQuery _ = MatchFilter subQuery
 
 expression3 :: Parser u FilterToken
 expression3 = tokenOf <$> value <*> comparisonOperator <*> (FilterValueOfSubQuery <$> subQuery)
   where tokenOf lhs op = ComparisonFilter op lhs
 
 expression :: Parser u FilterToken
-expression = try expression1 <|> try expression3 <|> fail "expression"
+expression = try expression1 <|> try expression2 <|> try expression3 <|> fail "expression"
 
 pBooleanOperator :: Parser u BinaryBooleanOperator
 pBooleanOperator = try (symbol "&&" *> return AndOperator) <|> (symbol "||" *> return OrOperator)

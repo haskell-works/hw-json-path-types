@@ -186,12 +186,30 @@ spec = describe "HaskellWorks.Data.Json.Path.LexerSpec" $ do
             )
           }
       ]
-  -- it "$..book[?(@.author=~/.*REES/i)]: All books matching regex (ignore case)" $ do
-  --   parse query "" "$..book[?(@.author=~/.*REES/i)]" `shouldBe`
-  --     Right
-  --     [ PathTokenOfFieldAccessor RootNode
-  --     , PathTokenOfFieldAccessor (RecursiveField "book")
-  --     ]
+  it "$..book[?(@.author=~/.*REES/i)]: All books matching regex (ignore case)" $ do
+    parse query "" "$..book[?(@.author=~/.*REES/i)]" `shouldBe`
+      Right
+      [ PathTokenOfFieldAccessor RootNode
+      , PathTokenOfFieldAccessor (RecursiveField "book")
+      , PathTokenOfFilterToken MatchFilter
+        { matchValue = SubQuery
+          [ CurrentNode
+          , PathTokenOfFieldAccessor (Field "author")
+          ]
+        , matchRegex = RegexLiteral
+          { regexString = ".*REES"
+          , regexMode = RegexMode
+            { regexInsensitive = True
+            }
+          }
+        }
+      ]
+  it "$..book[?(@.author=~/.*REES/i)]: All books matching regex (ignore case)" $ do
+    parse expression "" "@.author=~/.*REES/i" `shouldBe`
+      Right (MatchFilter (SubQuery [CurrentNode, PathTokenOfFieldAccessor (Field "author")]) (RegexLiteral ".*REES" (RegexMode True)))
+  it "$..book[?(@.author=~/.*REES/i)]: All books matching regex (ignore case)" $ do
+    parse expression1 "" "@.author=~/.*REES/i" `shouldBe`
+      Right (MatchFilter (SubQuery [CurrentNode, PathTokenOfFieldAccessor (Field "author")]) (RegexLiteral ".*REES" (RegexMode True)))
   it "$..*: Give me every thing" $ do
     parse query "" "$..*" `shouldBe`
       Right
