@@ -109,4 +109,14 @@ data PathToken
   | PathTokenOfRecursiveFilterToken RecursiveFilterToken
   deriving (Eq, Show)
 
+data Relative
+  = RelativeCons
+    { relativePathToken :: PathToken
+    , relativeChild     :: Relative
+    }
+  | RelativeNil
+  deriving (Eq, Show)
+
+data Absolute = Absolute Relative deriving (Eq, Show)
+
 data Path = PathOfAbsolute [PathToken] | PathOfRelative [PathToken]
