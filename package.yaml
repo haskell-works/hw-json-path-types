@@ -1,0 +1,62 @@
+name: hw-json-path-types
+version: '0.0.0.1'
+synopsis: Memory efficient JSON parser
+description: Please see README.md
+category: Data, Conduit
+author: John Ky
+maintainer: newhoggy@gmail.com
+copyright: 2017 John Ky
+license: BSD3
+github: haskell-works/hw-json-path-types
+homepage: http://github.com/haskell-works/hw-json-path-types#readme
+extra-source-files:
+- README.md
+- corpus/5000B.bp
+- corpus/5000B.ib
+- corpus/5000B.json
+- corpus/issue-0001.bp
+- corpus/issue-0001.ib
+- corpus/issue-0001.json
+- corpus/issue-0001.md
+ghc-options: -Wall
+dependencies:
+- base >=4 && <5
+- array
+- ansi-wl-pprint
+- attoparsec
+- bytestring
+- conduit
+- containers
+- dlist
+- extra
+- mmap
+- mono-traversable
+- parsec
+- resourcet
+- scientific
+- text
+- vector
+- word8
+library:
+  source-dirs: src
+  ghc-options:
+  - -O2
+  - -msse4.2
+  exposed-modules:
+  - HaskellWorks.Data.Json.Path.Ast
+  - HaskellWorks.Data.Json.Path.Lexer
+  - HaskellWorks.Data.Json.Path.Parser
+  - HaskellWorks.Data.Json.Path.Types
+  dependencies:
+  - mtl
+tests:
+  hw-json-path-types-test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hspec
+    - hw-json-path-types
