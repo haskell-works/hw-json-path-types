@@ -1,5 +1,6 @@
 # hw-json
-[![0.0-branch](https://circleci.com/gh/haskell-works/hw-json/tree/0.0-branch.svg?style=svg)](https://circleci.com/gh/haskell-works/hw-json/tree/0.0-branch)
+
+[![CircleCI](https://circleci.com/gh/haskell-works/hw-json.svg?style=svg)](https://circleci.com/gh/haskell-works/hw-json)
 
 Conduits for tokenizing streams.
 
