@@ -2,7 +2,7 @@ name: hw-json-path-types
 version: '0.0.0.1'
 synopsis: Memory efficient JSON parser
 description: Please see README.md
-category: Data, Conduit
+category: Data, Succinct Data Structures, Data Structures, JSON
 author: John Ky
 maintainer: newhoggy@gmail.com
 copyright: 2017 John Ky
