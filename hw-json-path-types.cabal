@@ -1,0 +1,79 @@
+cabal-version: 2.4
+
+name:                   hw-json-path-types
+version:                0.0.0.1
+synopsis:               Memory efficient JSON parser
+description:            Memory efficient JSON parser. Please see README.md
+category:               Data, Succinct Data Structures, Data Structures, JSON
+homepage:               http://github.com/haskell-works/hw-json-path-types#readme
+bug-reports:            https://github.com/haskell-works/hw-json-path-types/issues
+author:                 John Ky
+maintainer:             newhoggy@gmail.com
+copyright:              2017-2019 John Ky
+license:                BSD-3-Clause
+license-file:           LICENSE
+build-type:             Simple
+extra-source-files:     README.md
+
+source-repository head
+  type: git
+  location: https://github.com/haskell-works/hw-json-path-types
+
+library
+  exposed-modules:      HaskellWorks.Data.Json.Path.Ast
+                        HaskellWorks.Data.Json.Path.Lexer
+                        HaskellWorks.Data.Json.Path.Parser
+                        HaskellWorks.Data.Json.Path.Types
+  other-modules:        Paths_hw_json_path_types
+  autogen-modules:      Paths_hw_json_path_types
+  hs-source-dirs:       src
+  ghc-options:          -Wall -msse4.2
+  build-depends:        ansi-wl-pprint
+                      , array
+                      , attoparsec
+                      , base >=4 && <5
+                      , bytestring
+                      , conduit
+                      , containers
+                      , dlist
+                      , extra
+                      , mmap
+                      , mono-traversable
+                      , mtl
+                      , parsec
+                      , resourcet
+                      , scientific
+                      , text
+                      , vector
+                      , word8
+  default-language:     Haskell2010
+
+test-suite hw-json-path-types-test
+  type:                 exitcode-stdio-1.0
+  main-is:              Spec.hs
+  other-modules:        HaskellWorks.Data.Json.Path.LexerSpec
+                        HaskellWorks.Data.Json.Path.ParserSpec
+                        Paths_hw_json_path_types
+  autogen-modules:      Paths_hw_json_path_types
+  hs-source-dirs:       test
+  ghc-options:          -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:        ansi-wl-pprint
+                      , array
+                      , attoparsec
+                      , base >=4 && <5
+                      , bytestring
+                      , conduit
+                      , containers
+                      , dlist
+                      , extra
+                      , hspec
+                      , hw-json-path-types
+                      , mmap
+                      , mono-traversable
+                      , parsec
+                      , resourcet
+                      , scientific
+                      , text
+                      , vector
+                      , word8
+  default-language:     Haskell2010
