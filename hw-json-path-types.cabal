@@ -19,19 +19,39 @@ source-repository head
   type: git
   location: https://github.com/haskell-works/hw-json-path-types
 
-library
-  exposed-modules:      HaskellWorks.Data.Json.Path.Ast
-                        HaskellWorks.Data.Json.Path.Lexer
-                        HaskellWorks.Data.Json.Path.Parser
-                        HaskellWorks.Data.Json.Path.Types
-  other-modules:        Paths_hw_json_path_types
-  autogen-modules:      Paths_hw_json_path_types
-  hs-source-dirs:       src
+common base                     { build-depends: base                     >= 4          && < 5      }
+
+common ansi-wl-pprint           { build-depends: ansi-wl-pprint                                     }
+common array                    { build-depends: array                                              }
+common attoparsec               { build-depends: attoparsec                                         }
+common bytestring               { build-depends: bytestring                                         }
+common conduit                  { build-depends: conduit                                            }
+common containers               { build-depends: containers                                         }
+common dlist                    { build-depends: dlist                                              }
+common doctest                  { build-depends: doctest                  >= 0.16.2     && < 0.17   }
+common doctest-discover         { build-depends: doctest-discover         >= 0.2        && < 0.3    }
+common extra                    { build-depends: extra                                              }
+common hspec                    { build-depends: hspec                                              }
+common hw-json-path-types       { build-depends: hw-json-path-types                                 }
+common mmap                     { build-depends: mmap                                               }
+common mono-traversable         { build-depends: mono-traversable                                   }
+common mtl                      { build-depends: mtl                                                }
+common parsec                   { build-depends: parsec                                             }
+common resourcet                { build-depends: resourcet                                          }
+common scientific               { build-depends: scientific                                         }
+common text                     { build-depends: text                                               }
+common vector                   { build-depends: vector                                             }
+common word8                    { build-depends: word8                                              }
+
+common config
+  default-language:     Haskell2010
   ghc-options:          -Wall -msse4.2
-  build-depends:        ansi-wl-pprint
+
+library
+  import:               base, config
+                      , ansi-wl-pprint
                       , array
                       , attoparsec
-                      , base >=4 && <5
                       , bytestring
                       , conduit
                       , containers
@@ -46,21 +66,20 @@ library
                       , text
                       , vector
                       , word8
-  default-language:     Haskell2010
+  exposed-modules:      HaskellWorks.Data.Json.Path.Ast
+                        HaskellWorks.Data.Json.Path.Lexer
+                        HaskellWorks.Data.Json.Path.Parser
+                        HaskellWorks.Data.Json.Path.Types
+  other-modules:        Paths_hw_json_path_types
+  autogen-modules:      Paths_hw_json_path_types
+  hs-source-dirs:       src
+  ghc-options:          -msse4.2
 
 test-suite hw-json-path-types-test
-  type:                 exitcode-stdio-1.0
-  main-is:              Spec.hs
-  other-modules:        HaskellWorks.Data.Json.Path.LexerSpec
-                        HaskellWorks.Data.Json.Path.ParserSpec
-                        Paths_hw_json_path_types
-  autogen-modules:      Paths_hw_json_path_types
-  hs-source-dirs:       test
-  ghc-options:          -Wall -threaded -rtsopts -with-rtsopts=-N
-  build-depends:        ansi-wl-pprint
+  import:               base, config
+                      , ansi-wl-pprint
                       , array
                       , attoparsec
-                      , base >=4 && <5
                       , bytestring
                       , conduit
                       , containers
@@ -76,4 +95,11 @@ test-suite hw-json-path-types-test
                       , text
                       , vector
                       , word8
-  default-language:     Haskell2010
+  type:                 exitcode-stdio-1.0
+  main-is:              Spec.hs
+  other-modules:        HaskellWorks.Data.Json.Path.LexerSpec
+                        HaskellWorks.Data.Json.Path.ParserSpec
+                        Paths_hw_json_path_types
+  autogen-modules:      Paths_hw_json_path_types
+  hs-source-dirs:       test
+  ghc-options:          -threaded -rtsopts -with-rtsopts=-N
