@@ -103,3 +103,15 @@ test-suite hw-json-path-types-test
   autogen-modules:      Paths_hw_json_path_types
   hs-source-dirs:       test
   ghc-options:          -threaded -rtsopts -with-rtsopts=-N
+
+test-suite doctest
+  import:               base, config
+                      , doctest
+                      , doctest-discover
+                      , hw-json-path-types
+  default-language:     Haskell2010
+  type:                 exitcode-stdio-1.0
+  ghc-options:          -threaded
+  main-is:              DoctestDriver.hs
+  HS-Source-Dirs:       doctest
+  build-tool-depends:   doctest-discover:doctest-discover
