@@ -99,8 +99,6 @@ test-suite hw-json-path-types-test
   main-is:              Spec.hs
   other-modules:        HaskellWorks.Data.Json.Path.LexerSpec
                         HaskellWorks.Data.Json.Path.ParserSpec
-                        Paths_hw_json_path_types
-  autogen-modules:      Paths_hw_json_path_types
   hs-source-dirs:       test
   ghc-options:          -threaded -rtsopts -with-rtsopts=-N
 
