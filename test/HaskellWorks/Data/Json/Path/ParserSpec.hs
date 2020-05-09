@@ -1,23 +1,23 @@
 
-{-# LANGUAGE ExplicitForAll             #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE InstanceSigs               #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE NoMonomorphismRestriction  #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE ExplicitForAll            #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
+{-# LANGUAGE InstanceSigs              #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
 
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 module HaskellWorks.Data.Json.Path.ParserSpec (spec) where
 
-import           Data.Attoparsec.Text
-import           HaskellWorks.Data.Json.Path.Ast
-import           HaskellWorks.Data.Json.Path.Parser
-import           Test.Hspec
+import Data.Attoparsec.Text
+import HaskellWorks.Data.Json.Path.Ast
+import HaskellWorks.Data.Json.Path.Parser
+import Test.Hspec
 
-{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
+{- HLINT ignore "Redundant do"    -}
 
 spec :: Spec
 spec = describe "HaskellWorks.Data.Json.Path.ParserSpec" $ do
