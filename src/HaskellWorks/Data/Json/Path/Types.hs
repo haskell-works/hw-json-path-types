@@ -1,11 +1,4 @@
--- |
--- Copyright: 2017 John Ky
--- License: MIT
---
--- Json
-
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
 
 module HaskellWorks.Data.Json.Path.Types where
 
@@ -47,7 +40,7 @@ queryExpr :: Parser QueryExpr
 queryExpr
   =   QueryAnd            <$> queryExpr <*> ("&&" *> ws *> queryExpr)
   <|> QueryOr             <$> queryExpr <*> ("||" *> ws *> queryExpr)
-  <|> const QueryStar     <$> "*"
+  <|> QueryStar           <$  "*"
   <|> QueryFieldGreater   <$> ("@." *> identifier) <*> (">" *> int)
   <|> QueryFieldLesser    <$> ("@." *> identifier) <*> ("<" *> int)
   <|> QueryField          <$> ("@." *> identifier)

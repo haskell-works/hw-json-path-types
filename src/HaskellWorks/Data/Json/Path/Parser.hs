@@ -1,17 +1,11 @@
--- |
--- Copyright: 2017 John Ky
--- License: MIT
---
--- Json
-
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeOperators     #-}
 
 module HaskellWorks.Data.Json.Path.Parser where
 
 import Control.Applicative
 import Control.Monad
-import Data.Attoparsec.Text as AT
+import Data.Attoparsec.Text            as AT
+import Data.Functor
 import Data.List.Extra
 import Data.Maybe
 import Data.Scientific
@@ -72,7 +66,7 @@ arrayPartial :: Parser ArrayAccessor
 arrayPartial = arraySlicePartial <|> arrayRandomAccessPartial
 
 arrayAll :: Parser ArraySlice
-arrayAll = "*" *> return (ArraySlice Nothing Nothing 1)
+arrayAll = "*" $> ArraySlice Nothing Nothing 1
 
 arrayAccessors :: Parser ArrayAccessor
 arrayAccessors = "[" *> arraySpec <* "]"
@@ -90,11 +84,11 @@ numberValue = numberOf <$> AT.scientific
 
 booleanValue :: Parser FilterDirectValue
 booleanValue
-  =   "true"  *> return JPTrue
-  <|> "false" *> return JPFalse
+  =   "true"  $> JPTrue
+  <|> "false" $> JPFalse
 
 nullValue :: Parser FilterValue
-nullValue = "null" *> return (FilterValueOfFilterDirectValue JPNull)
+nullValue = "null" $> FilterValueOfFilterDirectValue JPNull
 
 stringValue :: Parser JPString
 stringValue = JPString <$> quotedValue
@@ -108,18 +102,18 @@ value
 
 comparisonOperator :: Parser ComparisonOperator
 comparisonOperator
-  =   ("=="  *> return EqOperator)
-  <|> ("!="  *> return NotEqOperator)
-  <|> ("<="  *> return LessOrEqOperator)
-  <|> ("<"   *> return LessOperator)
-  <|> (">="  *> return GreaterOrEqOperator)
-  <|> (">"   *> return GreaterOperator)
+  =   ("=="  $> EqOperator)
+  <|> ("!="  $> NotEqOperator)
+  <|> ("<="  $> LessOrEqOperator)
+  <|> ("<"   $> LessOperator)
+  <|> (">="  $> GreaterOrEqOperator)
+  <|> (">"   $> GreaterOperator)
 
 matchOperator :: Parser MatchOperator
-matchOperator = "=~" *> return MatchOperator
+matchOperator = "=~" $> MatchOperator
 
 current :: Parser PathToken
-current = "@" *> return CurrentNode
+current = "@" $> CurrentNode
 
 subQuery :: Parser SubQuery
 subQuery = SubQuery <$> ((:) <$> (current <|> root) <*> pathSequence)
@@ -127,8 +121,8 @@ subQuery = SubQuery <$> ((:) <$> (current <|> root) <*> pathSequence)
 expression1 :: Parser FilterToken
 expression1 = tokenOf <$> subQuery <*> optional ((,) <$> comparisonOperator <*> ((FilterValueOfSubQuery <$> subQuery) <|> value))
   where tokenOf :: SubQuery -> Maybe (ComparisonOperator, FilterValue) -> FilterToken
-        tokenOf subq1 Nothing           = HasFilter subq1
-        tokenOf lhs   (Just (op, rhs))  = ComparisonFilter op (FilterValueOfSubQuery lhs) rhs
+        tokenOf subq1 Nothing          = HasFilter subq1
+        tokenOf lhs   (Just (op, rhs)) = ComparisonFilter op (FilterValueOfSubQuery lhs) rhs
 
 expression3 :: Parser FilterToken
 expression3 = tokenOf <$> value <*> comparisonOperator <*> (FilterValueOfSubQuery <$> subQuery)
@@ -138,7 +132,7 @@ expression :: Parser FilterToken
 expression = expression1 <|> expression3 <|> fail "expression"
 
 pBooleanOperator :: Parser BinaryBooleanOperator
-pBooleanOperator = ("&&" *> return AndOperator) <|> ("||" *> return OrOperator)
+pBooleanOperator = ("&&" $> AndOperator) <|> ("||" $> OrOperator)
 
 booleanExpression :: Parser FilterToken
 booleanExpression = tokenOf <$> expression <*> optional ((,) <$> pBooleanOperator <*> booleanExpression)
@@ -155,8 +149,8 @@ subscriptFilter = "[?(" *> booleanExpression <* ")]"
 
 subscriptField :: Parser FieldAccessor
 subscriptField = subscribe <$> ("[" *> sepBy quotedField "," <* "]")
-  where subscribe [f1]    = Field f1
-        subscribe fields  = MultiField fields
+  where subscribe [f1]   = Field f1
+        subscribe fields = MultiField fields
 
 dotField :: Parser FieldAccessor
 dotField = Field <$> ("." *> field)
@@ -165,10 +159,10 @@ recursiveField :: Parser FieldAccessor
 recursiveField = RecursiveField <$> (".." *> field)
 
 anyChild :: Parser FieldAccessor
-anyChild = (".*" <|> "['*']" <|> "[\"*\"]") *> return AnyField
+anyChild = (".*" <|> "['*']" <|> "[\"*\"]") $> AnyField
 
 recursiveAny :: Parser FieldAccessor
-recursiveAny = "..*" *> return RecursiveAnyField
+recursiveAny = "..*" $> RecursiveAnyField
 
 fieldAccessors :: Parser PathToken
 fieldAccessors
@@ -186,7 +180,7 @@ pathSequence :: Parser [PathToken]
 pathSequence = many (childAccess <|> (PathTokenOfFilterToken <$> subscriptFilter))
 
 root :: Parser PathToken
-root = "$" *> return (PathTokenOfFieldAccessor RootNode)
+root = "$" $> PathTokenOfFieldAccessor RootNode
 
 query :: Parser [PathToken]
 query = (:) <$> root <*> pathSequence
